@@ -13,11 +13,9 @@ from langchain.cache import InMemoryCache
 from localgpt.conversation.conversation import (
     OpenAIChatbotBuilder,
     rewrite_conversation,
-    ConversationManager,
 )
 import logging
 import uuid
-from streamlit_option_menu import option_menu
 
 langchain.llm_cache = InMemoryCache()
 
@@ -27,6 +25,7 @@ logger = logging.getLogger(__name__)
 openai_model_options = ["gpt-3.5-turbo", "gpt-4"]
 agent_tools = ["llm-math"]
 
+# DEBUG
 # container_top = st.container()
 # col1, col2 = st.columns(2)
 # with container_top:
@@ -68,12 +67,10 @@ with st.sidebar:
     with st.sidebar.expander("🛠 API keys for tools", expanded=True):
         st.text("Introduce API keys for tools")
 
-
     # History
 
     def reset_conversation():
         st.session_state.update(ongoing_conversation_id=uuid.uuid4().hex)
-
 
     new_conversation_button = st.button(
         "New Conversation",
@@ -86,27 +83,18 @@ with st.sidebar:
     conversation_list = list(message_history.db.tables())
 
     rev_conversation_list = sorted(conversation_list, reverse=True)
-    # if rev_conversation_list:
-    #     selected = option_menu(
-    #         "Conversation History",
-    #         rev_conversation_list,
-    #         menu_icon="book",
-    #         key="conversation_id",
-    #         manual_select=True,
-    #     )
-    #     if not new_conversation_button:
-    #         st.session_state.ongoing_conversation_id = selected
-    # if "selected_conversation" not in st.session_state:
-    #     st.session_state.selected_conversation =
-    # if rev_conversation_list:
+
     selected_conversation = st.selectbox(
         "📖 Conversation History",
         rev_conversation_list,
         key="selected_conversation",
     )
-    def update_load_boolean_callback(x:bool):
+
+    def update_load_boolean_callback(x: bool):
         if x:
-            st.session_state.update(ongoing_conversation_id=st.session_state.selected_conversation)
+            st.session_state.update(
+                ongoing_conversation_id=st.session_state.selected_conversation
+            )
         else:
             logger.info("No conversation available")
 
@@ -145,6 +133,7 @@ if prompt := st.chat_input():
     response = agent_or_chain.run(prompt, callbacks=[st_callback])
     st.write(response)
 
+# DEBUG
 # with container_top:
 #     with col2:
 #         st.session_state

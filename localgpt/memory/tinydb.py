@@ -3,7 +3,7 @@ import logging
 from typing import List
 from langchain.schema import BaseChatMessageHistory
 from langchain.schema.messages import BaseMessage, _message_to_dict, messages_from_dict
-from localgpt.utils import resolve_path
+from ..utils import resolve_path
 
 logger = logging.getLogger(__name__)
 

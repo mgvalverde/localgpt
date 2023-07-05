@@ -1,4 +1,3 @@
-from typing import List
 import streamlit as st
 from typing import Type, List
 from langchain.schema import BaseMessage
@@ -6,9 +5,8 @@ from langchain.chat_models import ChatOpenAI
 from langchain.chains import ConversationChain
 from langchain.agents import AgentType, initialize_agent, load_tools
 from langchain.memory import ConversationBufferMemory
-from localgpt.memory.tinydb import TinyDBChatMessageHistory
-from localgpt.interface.utils import generate_uuid
-from langchain.callbacks import StreamlitCallbackHandler
+from ..memory.tinydb import TinyDBChatMessageHistory
+from ..utils import generate_uuid
 
 
 class OpenAIChatbotBuilder:

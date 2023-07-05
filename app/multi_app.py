@@ -2,13 +2,16 @@
 import streamlit as st
 import hydralit as hy
 
-app = hy.HydraApp(title="Private GPT")
+# from localgpt.interface.localgpt import localgpt_app
+
+app = hy.HydraApp(
+    title="Local GPT",
+)
 
 
 @app.addapp(is_home=True, title="Chat", icon="💬")
 def my_home():
     hy.info("Hello from Home!")
-    st.info("Hello from Home!")
 
 
 @app.addapp(title="History", icon="📖")
