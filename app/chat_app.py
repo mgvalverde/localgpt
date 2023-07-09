@@ -5,35 +5,48 @@ This is some _markdown_.
 """
 
 import os
+import logging
 import streamlit as st
 import langchain
 from langchain.callbacks import StreamlitCallbackHandler
-from localgpt.memory.tinydb import TinyDBChatMessageHistory
+from localgpt.memory.sqlite import SQLEnhancedChatMessageHistory
 from langchain.cache import InMemoryCache
-from localgpt.conversation.conversation import (
-    OpenAIChatbotBuilder,
+from localgpt.conversation.builder import (
+    get_chat_assistant,
     rewrite_conversation,
 )
-import logging
-import uuid
+from localgpt.utils import (
+    generate_uuid,
+    reset_conversation,
+    update_load_boolean_callback,
+    preprocess_title,
+    resolve_path
+)
 
 langchain.llm_cache = InMemoryCache()
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# TODO: take those to a config file
 openai_model_options = ["gpt-3.5-turbo", "gpt-4"]
 agent_tools = ["llm-math"]
+db_path = "~/.localgpt/chat_history.db"
+model_temperature = 0
+play_streaming = True
+db_history_table_name = "message_store"
+title_default_len = 8
 
-# DEBUG
-# container_top = st.container()
-# col1, col2 = st.columns(2)
-# with container_top:
-#     with col1:
-#         st.session_state
+#
+db_resolved_path = resolve_path(db_path, mkdir=True)
+db_connection_string = fr"sqlite:///{db_resolved_path}"
+
+# Changes of db_connection_string are applied when reloading the page
+if "db_connection_string" not in st.session_state:
+    st.session_state.db_connection_string = db_connection_string
 
 if "ongoing_conversation_id" not in st.session_state:
-    st.session_state.ongoing_conversation_id = uuid.uuid4().hex
+    st.session_state.ongoing_conversation_id = generate_uuid()
 
 with st.sidebar:
     st.title("⚙️ Configuration")
@@ -60,7 +73,7 @@ with st.sidebar:
     )
 
     if st.session_state.agent_tools:
-        st.text("🚀 Agent Mode")
+        st.text("🚀 Agent Mode - Experimental!")
     else:
         st.text("⛓ Chain Mode")
 
@@ -69,9 +82,6 @@ with st.sidebar:
 
     # History
 
-    def reset_conversation():
-        st.session_state.update(ongoing_conversation_id=uuid.uuid4().hex)
-
     new_conversation_button = st.button(
         "New Conversation",
         key="new_conversation_button",
@@ -79,61 +89,75 @@ with st.sidebar:
         on_click=reset_conversation,
     )
 
-    message_history = TinyDBChatMessageHistory()
-    conversation_list = list(message_history.db.tables())
-
-    rev_conversation_list = sorted(conversation_list, reverse=True)
+    message_history = SQLEnhancedChatMessageHistory(
+        session_id=st.session_state.ongoing_conversation_id,
+        connection_string=st.session_state.db_connection_string,
+        table_name=db_history_table_name
+    )
+    conversation_mapping = message_history.list_chats()
+    rev_conversation_list = sorted(conversation_mapping.keys(), reverse=True)
 
     selected_conversation = st.selectbox(
         "📖 Conversation History",
         rev_conversation_list,
         key="selected_conversation",
+        format_func=lambda x: conversation_mapping[x]
     )
 
-    def update_load_boolean_callback(x: bool):
-        if x:
-            st.session_state.update(
-                ongoing_conversation_id=st.session_state.selected_conversation
-            )
-        else:
-            logger.info("No conversation available")
-
     condition_load_callback = bool(len(rev_conversation_list))
+
     load_conversation_button = st.button(
         "Load Conversation",
         key="load_conversation_button",
         use_container_width=True,
-        on_click=lambda: update_load_boolean_callback(condition_load_callback),
+        on_click=lambda: update_load_boolean_callback(condition_load_callback,
+                                                      "ongoing_conversation_id",
+                                                      st.session_state.selected_conversation
+                                                      ),
     )
-    ## Main
+
+## main block
 
 st.title(f"💬 Chatbot")
-st.subheader(st.session_state.ongoing_conversation_id)
 
 if not openai_api_key:
     st.info("Please add your OpenAI API key to continue.")
     st.stop()
+try:
+    st.subheader(conversation_mapping[st.session_state.ongoing_conversation_id])
+except KeyError:
+    st.subheader("New Conversation")
 
-chat = OpenAIChatbotBuilder(session_id=st.session_state.ongoing_conversation_id)
-chat.build(
-    openai_api_key=openai_api_key,
-    model_name=st.session_state.openai_model,
-    agent_tools=st.session_state.agent_tools,
+assistant = get_chat_assistant(
+    session_id=st.session_state.ongoing_conversation_id,
+    connection_string=st.session_state.db_connection_string,
+    api_key=openai_api_key,
+    model=st.session_state.openai_model,
+    tools=st.session_state.agent_tools,
+    table_name=db_history_table_name,
+    temperature=model_temperature,
+    streaming=play_streaming,
 )
-agent_or_chain = chat()
 
-container = st.container()
-container.empty()
-rewrite_conversation(chat.message_history.messages)
+container_history = st.container()
+container_chat = st.container()
+container_thinking = st.container()
 
+rewrite_conversation(message_history.messages, container_history)
 if prompt := st.chat_input():
-    st.chat_message("user").write(prompt)
-    with st.chat_message("assistant"):
-        st_callback = StreamlitCallbackHandler(parent_container=container)
-    response = agent_or_chain.run(prompt, callbacks=[st_callback])
-    st.write(response)
+    with container_chat:
+        st.chat_message("user").write(prompt)
+        with container_thinking:
+            st_callback = StreamlitCallbackHandler(parent_container=container_thinking)
+            response = assistant.run(prompt, callbacks=[st_callback])
+        # response = agent_or_chain.run(prompt)
+        st.chat_message("assistant").write(response)
 
-# DEBUG
-# with container_top:
-#     with col2:
-#         st.session_state
+# TODO: provide title if "New Conversation"
+ongoing_conversation_name = message_history \
+    .list_chats() \
+    .get(st.session_state.ongoing_conversation_id)
+
+if ongoing_conversation_name == "Untitled Conversation" and \
+        prompt is not None:
+    message_history.upsert_title(title=preprocess_title(prompt, length=title_default_len))
