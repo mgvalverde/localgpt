@@ -51,5 +51,7 @@ def preprocess_title(title, length: int = 5):
     _ = title.split()
     if len(_) > length:
         _ = _[:length]
-    prep_title = " ".join(_) + "..."
+        prep_title = " ".join(_) + "..."
+    else:
+        prep_title = " ".join(_)
     return prep_title

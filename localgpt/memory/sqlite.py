@@ -10,6 +10,7 @@ try:
 except ImportError:
     from sqlalchemy.ext.declarative import declarative_base
 
+_DEFAULT_TITLE = "Untitled Conversation"
 
 def create_message_model(table_name, DynamicBase):  # type: ignore
     """
@@ -53,7 +54,7 @@ def create_mapping_model(table_name, DynamicBase):  # type: ignore
     class ConversationMetadata(DynamicBase):
         __tablename__ = table_name
         session_id = Column(Text, primary_key=True)
-        title = Column(Text, default="Untitled Conversation")
+        title = Column(Text, default=_DEFAULT_TITLE)
 
     return ConversationMetadata
 
@@ -91,7 +92,7 @@ class SQLEnhancedChatMessageHistory(SQLChatMessageHistory):
                 .group_by(TableA.session_id).subquery()
             query = session.query(subquery.c.session_id, TableB.title) \
                 .join(TableB, TableB.session_id == subquery.c.session_id) \
-                .order_by(subquery.c._meta_modified_at)
+                .order_by(subquery.c._meta_modified_at.desc())
 
             if n is not None:
                 query = query.limit(n)
@@ -116,8 +117,11 @@ class SQLEnhancedChatMessageHistory(SQLChatMessageHistory):
             jsonstr = json.dumps(_message_to_dict(message))
             session.add(self.Message(session_id=self.session_id, message=jsonstr))
             #TODO: refactor to extract the upsert title logic to a function
-            session.query(self.ConversationMetadata).filter(
+
+            is_in_metadata = session.query(self.ConversationMetadata).filter(
                 self.ConversationMetadata.session_id == self.session_id
-            ).delete()
-            session.add(self.ConversationMetadata(session_id=self.session_id, title=None))
+            ).count() > 0
+
+            if not is_in_metadata:
+                session.add(self.ConversationMetadata(session_id=self.session_id))
             session.commit()

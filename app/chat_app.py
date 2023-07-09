@@ -35,7 +35,7 @@ db_path = "~/.localgpt/chat_history.db"
 model_temperature = 0
 play_streaming = True
 db_history_table_name = "message_store"
-title_default_len = 8
+title_default_len = 12
 
 #
 db_resolved_path = resolve_path(db_path, mkdir=True)
@@ -95,16 +95,15 @@ with st.sidebar:
         table_name=db_history_table_name
     )
     conversation_mapping = message_history.list_chats()
-    rev_conversation_list = sorted(conversation_mapping.keys(), reverse=True)
 
     selected_conversation = st.selectbox(
         "📖 Conversation History",
-        rev_conversation_list,
+        conversation_mapping.keys(),
         key="selected_conversation",
         format_func=lambda x: conversation_mapping[x]
     )
 
-    condition_load_callback = bool(len(rev_conversation_list))
+    condition_load_callback = bool(len(conversation_mapping))
 
     load_conversation_button = st.button(
         "Load Conversation",
@@ -141,19 +140,19 @@ assistant = get_chat_assistant(
 
 container_history = st.container()
 container_chat = st.container()
-container_thinking = st.container()
 
 rewrite_conversation(message_history.messages, container_history)
 if prompt := st.chat_input():
     with container_chat:
         st.chat_message("user").write(prompt)
-        with container_thinking:
-            st_callback = StreamlitCallbackHandler(parent_container=container_thinking)
+
+        with container_chat:
+            st_callback = StreamlitCallbackHandler(parent_container=container_chat)
             response = assistant.run(prompt, callbacks=[st_callback])
-        # response = agent_or_chain.run(prompt)
         st.chat_message("assistant").write(response)
 
-# TODO: provide title if "New Conversation"
+
+# Auto title handling
 ongoing_conversation_name = message_history \
     .list_chats() \
     .get(st.session_state.ongoing_conversation_id)
