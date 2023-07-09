@@ -1,11 +1,27 @@
 from pathlib import Path
+import streamlit as st
 import re
 import importlib
 import uuid
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 def generate_uuid():
     return uuid.uuid4().hex
+
+
+def reset_conversation():
+    st.session_state.update(ongoing_conversation_id=generate_uuid())
+
+
+def update_load_boolean_callback(cond: bool, key, value):
+    if cond:
+        st.session_state.update(**{key: value})
+    else:
+        logger.info("No conversation available")
 
 
 def check_import(module):
@@ -29,3 +45,13 @@ def resolve_path(path: str, mkdir: bool = True) -> str:
 def get_meta_path(fpath: str) -> str:
     """Return the path to the metadata file"""
     return re.sub(r"(.[a-zA-Z0-9]{3,4}$)", r"_meta\1", fpath)
+
+
+def preprocess_title(title, length: int = 5):
+    _ = title.split()
+    if len(_) > length:
+        _ = _[:length]
+        prep_title = " ".join(_) + "..."
+    else:
+        prep_title = " ".join(_)
+    return prep_title
