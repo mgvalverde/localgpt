@@ -3,6 +3,7 @@ import streamlit as st
 import re
 import importlib
 import uuid
+from .memory.sqlite import SQLEnhancedChatMessageHistory
 
 import logging
 
@@ -54,4 +55,13 @@ def preprocess_title(title, length: int = 5):
         prep_title = " ".join(_) + "..."
     else:
         prep_title = " ".join(_)
-    return prep_title
+    return prep_title.title()
+
+
+def delete_conversation(conversation_id: str, connection_string: str, table_name: str):
+    """Delete a conversation from the database"""
+    return SQLEnhancedChatMessageHistory(
+        session_id=conversation_id,
+        connection_string=connection_string,
+        table_name=table_name
+    ).delete()

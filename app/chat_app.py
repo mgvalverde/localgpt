@@ -20,7 +20,8 @@ from localgpt.utils import (
     reset_conversation,
     update_load_boolean_callback,
     preprocess_title,
-    resolve_path
+    resolve_path,
+    delete_conversation
 )
 
 langchain.llm_cache = InMemoryCache()
@@ -47,6 +48,9 @@ if "db_connection_string" not in st.session_state:
 
 if "ongoing_conversation_id" not in st.session_state:
     st.session_state.ongoing_conversation_id = generate_uuid()
+
+if "do_delete_conversation" not in st.session_state :
+    st.session_state.do_delete_conversation = 0
 
 with st.sidebar:
     st.title("⚙️ Configuration")
@@ -114,6 +118,32 @@ with st.sidebar:
                                                       st.session_state.selected_conversation
                                                       ),
     )
+    # deletion section
+    col_del_conv, col_del_conf = st.columns(2)
+
+    with col_del_conv:
+        delete_conversation_button = st.button(
+            "Delete Conversation",
+            use_container_width=True,
+            on_click=lambda: update_load_boolean_callback(
+                cond=True,
+                key="do_delete_conversation",
+                value=True
+            )
+        )
+
+    with col_del_conf:
+        if st.session_state.do_delete_conversation:
+            conf_delete_conversation_button = st.button(
+                "Confirm Deletion",
+                use_container_width=True,
+                on_click=lambda: delete_conversation(
+                    selected_conversation,
+                    st.session_state.db_connection_string,
+                    db_history_table_name
+                )
+            )
+        st.session_state.do_delete_conversation = 0
 
 ## main block
 
@@ -140,17 +170,20 @@ assistant = get_chat_assistant(
 
 container_history = st.container()
 container_chat = st.container()
+container_thinking = st.container()
 
-rewrite_conversation(message_history.messages, container_history)
-if prompt := st.chat_input():
+rewrite_conversation(messages=message_history.messages,
+                     container=container_history,
+                     upwards=False,
+                     )
+if prompt := container_chat.chat_input():
+    container_chat.chat_message("user").write(prompt)
+    # with st.empty() as container_thinking:
+
     with container_chat:
-        st.chat_message("user").write(prompt)
-
-        with container_chat:
-            st_callback = StreamlitCallbackHandler(parent_container=container_chat)
-            response = assistant.run(prompt, callbacks=[st_callback])
-        st.chat_message("assistant").write(response)
-
+        st_callback = StreamlitCallbackHandler(parent_container=container_thinking)
+        response = assistant.run(prompt, callbacks=[st_callback])
+        # st.chat_message("assistant").write(response)
 
 # Auto title handling
 ongoing_conversation_name = message_history \
