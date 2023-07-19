@@ -125,3 +125,11 @@ class SQLEnhancedChatMessageHistory(SQLChatMessageHistory):
             if not is_in_metadata:
                 session.add(self.ConversationMetadata(session_id=self.session_id))
             session.commit()
+
+    def delete(self) -> None:
+        """Delete the message from the record in db"""
+        with self.Session() as session:
+            session.query(self.Message).filter(
+                self.Message.session_id == self.session_id
+            ).delete()
+            session.commit()

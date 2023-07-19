@@ -85,8 +85,11 @@ def get_chat_assistant(session_id,
     return builder()
 
 
-def rewrite_conversation(messages: List[Type[BaseMessage]], container=None, *args, **kwargs):
+def rewrite_conversation(messages: List[Type[BaseMessage]], container=None, upwards=False, *args, **kwargs):
     mapping = {"human": "user", "ai": "assistant"}
+
+    if upwards:
+        messages = reversed(messages)
 
     for message in messages:
         _type = mapping.get(message.type, "unk")
