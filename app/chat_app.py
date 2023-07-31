@@ -4,17 +4,19 @@
 This is some _markdown_.
 """
 
-import os
 import logging
-import streamlit as st
+import os
+
 import langchain
-from langchain.callbacks import StreamlitCallbackHandler
-from localgpt.memory.sqlite import SQLEnhancedChatMessageHistory
+import streamlit as st
 from langchain.cache import InMemoryCache
+from langchain.callbacks import StreamlitCallbackHandler
+
 from localgpt.conversation.builder import (
     get_chat_assistant,
     rewrite_conversation,
 )
+from localgpt.memory.sqlite import SQLEnhancedChatMessageHistory
 from localgpt.utils import (
     generate_uuid,
     reset_conversation,
@@ -147,7 +149,7 @@ with st.sidebar:
 
 ## main block
 
-st.title(f"💬 Chatbot")
+# st.title(f"💬 Chatbot")
 
 if not openai_api_key:
     st.info("Please add your OpenAI API key to continue.")
@@ -169,21 +171,17 @@ assistant = get_chat_assistant(
 )
 
 container_history = st.container()
-container_chat = st.container()
-container_thinking = st.container()
 
 rewrite_conversation(messages=message_history.messages,
                      container=container_history,
                      upwards=False,
                      )
-if prompt := container_chat.chat_input():
-    container_chat.chat_message("user").write(prompt)
-    # with st.empty() as container_thinking:
-
-    with container_chat:
-        st_callback = StreamlitCallbackHandler(parent_container=container_thinking)
-        response = assistant.run(prompt, callbacks=[st_callback])
-        # st.chat_message("assistant").write(response)
+if prompt := st.chat_input():
+    st.chat_message("user").write(prompt)
+    container_ephemeral = st.container()
+    st_callback = StreamlitCallbackHandler(parent_container=container_ephemeral)
+    response = assistant.run(prompt, callbacks=[st_callback])
+    # st.chat_message("assistant").write(response)
 
 # Auto title handling
 ongoing_conversation_name = message_history \
