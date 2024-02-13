@@ -1,7 +1,9 @@
 """
-# This is the document title
+Local GPT
 
-This is some _markdown_.
+Streamlit version for ChatGPT
+It allow the use through the API
+
 """
 
 import logging
@@ -32,13 +34,14 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # TODO: take those to a config file
-openai_model_options = ["gpt-3.5-turbo", "gpt-4"]
+openai_model_options = ["gpt-4-1106-preview", "gpt-3.5-turbo", "gpt-3.5-turbo-16k"]
 agent_tools = ["llm-math"]
 db_path = "~/.localgpt/chat_history.db"
 model_temperature = 0
 play_streaming = True
 db_history_table_name = "message_store"
 title_default_len = 12
+st.set_page_config(page_title="Local GPT")
 
 #
 db_resolved_path = resolve_path(db_path, mkdir=True)
@@ -51,7 +54,7 @@ if "db_connection_string" not in st.session_state:
 if "ongoing_conversation_id" not in st.session_state:
     st.session_state.ongoing_conversation_id = generate_uuid()
 
-if "do_delete_conversation" not in st.session_state :
+if "do_delete_conversation" not in st.session_state:
     st.session_state.do_delete_conversation = 0
 
 with st.sidebar:
@@ -71,29 +74,13 @@ with st.sidebar:
         index=0,
     )
 
-    st.multiselect(
-        "Set the tools for your agent",
-        key="agent_tools",
-        options=agent_tools,
-        # default=agent_tools[0]
-    )
+    model_temperature = st.slider('Model temperature', 0.0, 1.0, 0.01)
 
-    if st.session_state.agent_tools:
-        st.text("🚀 Agent Mode - Experimental!")
-    else:
-        st.text("⛓ Chain Mode")
-
-    with st.sidebar.expander("🛠 API keys for tools", expanded=True):
-        st.text("Introduce API keys for tools")
+    st.text("⛓ Chain Mode")
 
     # History
-
-    new_conversation_button = st.button(
-        "New Conversation",
-        key="new_conversation_button",
-        use_container_width=True,
-        on_click=reset_conversation,
-    )
+    for _ in range(12):
+        st.text(" ") ## add extra expace
 
     message_history = SQLEnhancedChatMessageHistory(
         session_id=st.session_state.ongoing_conversation_id,
@@ -120,12 +107,18 @@ with st.sidebar:
                                                       st.session_state.selected_conversation
                                                       ),
     )
+    new_conversation_button = st.button(
+        "New Conversation",
+        key="new_conversation_button",
+        use_container_width=True,
+        on_click=reset_conversation,
+    )
     # deletion section
     col_del_conv, col_del_conf = st.columns(2)
 
     with col_del_conv:
         delete_conversation_button = st.button(
-            "Delete Conversation",
+            "Delete\nConversation",
             use_container_width=True,
             on_click=lambda: update_load_boolean_callback(
                 cond=True,
@@ -137,7 +130,7 @@ with st.sidebar:
     with col_del_conf:
         if st.session_state.do_delete_conversation:
             conf_delete_conversation_button = st.button(
-                "Confirm Deletion",
+                "Confirm\nDeletion",
                 use_container_width=True,
                 on_click=lambda: delete_conversation(
                     selected_conversation,
@@ -148,8 +141,6 @@ with st.sidebar:
         st.session_state.do_delete_conversation = 0
 
 ## main block
-
-# st.title(f"💬 Chatbot")
 
 if not openai_api_key:
     st.info("Please add your OpenAI API key to continue.")
@@ -164,7 +155,7 @@ assistant = get_chat_assistant(
     connection_string=st.session_state.db_connection_string,
     api_key=openai_api_key,
     model=st.session_state.openai_model,
-    tools=st.session_state.agent_tools,
+    tools=[], # using chains
     table_name=db_history_table_name,
     temperature=model_temperature,
     streaming=play_streaming,
@@ -181,7 +172,6 @@ if prompt := st.chat_input():
     container_ephemeral = st.container()
     st_callback = StreamlitCallbackHandler(parent_container=container_ephemeral)
     response = assistant.run(prompt, callbacks=[st_callback])
-    # st.chat_message("assistant").write(response)
 
 # Auto title handling
 ongoing_conversation_name = message_history \
