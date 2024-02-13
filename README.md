@@ -33,7 +33,7 @@ Add the following chunk to `~/.bash_alias` or `~/.bashrc`
 localgpt() {  
     local PREV_DIR=$PWD
     cd <PATH/TO/REPO>/localgpt &&\
-    source lauchapp.sh &&\
+    source launchapp.sh &&\
     cd $PREV_DIR
 }
 
