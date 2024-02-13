@@ -3,6 +3,10 @@
 Streamlit interface to access via API OpenAI models.
 Subscription model: pay-as-you-go
 
+## Features
+ * Creates a SQLite database to store your chat history.
+ * Allows chat of several interactions
+ * Access to several OpenAI models
 
 ## How to
 1. Create OpenAI API key
