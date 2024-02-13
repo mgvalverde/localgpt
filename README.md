@@ -11,8 +11,31 @@ Subscription model: pay-as-you-go
 ```bash
 poetry install
 ```
+3. Edit `template.env` to `.env`, and add the API key
 
-3. Run the streamlit app:
+4. Run the streamlit app:
 ```bash
 streamlit run app/chat_app.py
 ```
+
+
+## Create an alias in Linux 
+
+Add the following chunk to `~/.bash_alias` or `~/.bashrc` 
+
+```bash
+# localgpt
+
+localgpt() {  
+    local PREV_DIR=$PWD
+    cd <PATH/TO/REPO>/localgpt &&\
+    source lauchapp.sh &&\
+    cd $PREV_DIR
+}
+
+alias lgpt='localgpt'
+
+```
+
+
+
